@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SiriSheet WebGL Audio Visualizer Tester</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="orb-stage">
+      <div id="haloOuter"></div>
+      <div id="haloInner"></div>
+      <canvas id="binaryOrbits" aria-hidden="true"></canvas>
+      <canvas id="orb" width="560" height="560"></canvas>
+    </div>
+
+    <div class="panel">
+      <div class="row" style="justify-content: space-between">
+        <strong>SiriSheet Audio Visualizer</strong>
+        <span id="stateBadge" style="font-size: 12px; color: #34d399">Min: 240px | state: idle</span>
+      </div>
+
+      <div class="row">
+        <label class="btn">
+          📁 Upload Audio File
+          <input id="fileInput" type="file" accept="audio/*" style="display: none" />
+        </label>
+        <button id="micBtn" class="btn">🎙 Use Mic</button>
+      </div>
+
+      <audio id="audioPlayer" controls style="display: none"></audio>
+
+      <div>
+        <label class="small">
+          <span>Audio Level + True Waveform Deform</span>
+          <span id="gainVal">Gain: 3.5x</span>
+        </label>
+        <div class="meter-bg" style="margin-top: 6px">
+          <div id="meter" class="meter-fill"></div>
+        </div>
+        <input id="gainSlider" type="range" min="1" max="8" step="0.2" value="3.5" style="width: 100%; margin-top: 6px" />
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <label class="small">
+            <span>Size Expansion</span>
+            <span id="pulseVal">+28%</span>
+          </label>
+          <input id="pulseSlider" type="range" min="0" max="0.55" step="0.01" value="0.28" style="width: 100%; margin-top: 6px" />
+        </div>
+        <div>
+          <label class="small">
+            <span>Halo Glow</span>
+            <span id="glowVal">90%</span>
+          </label>
+          <input id="glowSlider" type="range" min="0" max="1.5" step="0.05" value="0.9" style="width: 100%; margin-top: 6px" />
+        </div>
+      </div>
+
+      <div style="padding-top: 2px;">
+        <label class="small" for="haloNoiseSlider">
+          <span>Halo Noise</span>
+          <span id="haloNoiseVal">50%</span>
+        </label>
+        <input id="haloNoiseSlider" type="range" min="0" max="100" step="1" value="50" style="width: 100%; margin-top: 6px" />
+      </div>
+
+      <div class="particle-controls" style="border-top: 1px solid #303038; padding-top: 12px; display: flex; flex-direction: column; gap: 10px;">
+        <div class="row" style="justify-content: space-between;">
+          <strong style="font-size: 13px;">Particle Controls</strong>
+          <span id="particleStatus" style="font-size: 11px; color: #a5b4fc;">520 particle cap</span>
+        </div>
+        <div class="grid-2">
+          <div>
+            <label class="small"><span>Density Cap</span><span id="particleDensityVal">520</span></label>
+            <input id="particleDensity" type="range" min="100" max="1400" step="50" value="520" style="width: 100%; margin-top: 6px" />
+          </div>
+          <div>
+            <label class="small"><span>Drift Speed</span><span id="particleSpeedVal">1.0×</span></label>
+            <input id="particleSpeed" type="range" min="0.2" max="3" step="0.1" value="1" style="width: 100%; margin-top: 6px" />
+          </div>
+          <div>
+            <label class="small"><span>Halo Spread</span><span id="particleSpreadVal">50px</span></label>
+            <input id="particleSpread" type="range" min="20" max="110" step="5" value="50" style="width: 100%; margin-top: 6px" />
+          </div>
+          <div>
+            <label class="small"><span>Particle Glow</span><span id="particleGlowVal">100%</span></label>
+            <input id="particleGlow" type="range" min="0.2" max="2" step="0.1" value="1" style="width: 100%; margin-top: 6px" />
+          </div>
+        </div>
+        <span style="font-size: 11px; color: #71717a;">New stardust spawns only on audio hits. Existing particles keep drifting and fading naturally.</span>
+      </div>
+
+      <div class="row">
+        <button class="btn state-btn" data-state="idle">Idle</button>
+        <button class="btn state-btn active" data-state="speaking">Speaking</button>
+        <button class="btn state-btn" data-state="listening">Listening</button>
+        <button class="btn state-btn" data-state="thinking">Thinking</button>
+      </div>
+
+      <div class="grid-2">
+        <button class="btn preset selected" data-from="#4285F4" data-to="#EA4335" data-halo="conic-gradient(from 0deg, #4285F4, #34A853, #FBBC05, #EA4335, #4285F4)" style="background: linear-gradient(135deg, #4285f4, #34a853, #fbbc05, #ea4335);">
+          <span class="preset-name">Google Assistant</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+        <button class="btn preset" data-from="#00CAFF" data-to="#0051FF" data-halo="conic-gradient(from 0deg, #00CAFF, #0051FF, #38bdf8, #1d4ed8, #00CAFF)" style="background: linear-gradient(135deg, #00caff, #0051ff)">
+          <span class="preset-name">Amazon Alexa</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+        <button class="btn preset" data-from="#82f4ff" data-to="#8e6cff" data-halo="conic-gradient(from 0deg, #82f4ff, #8e6cff, #ec4899, #38bdf8, #82f4ff)" style="background: linear-gradient(135deg, #82f4ff, #8e6cff)">
+          <span class="preset-name">Apple Siri</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+        <button class="btn preset" data-from="#fbbf24" data-to="#f43f5e" data-halo="conic-gradient(from 0deg, #fbbf24, #f43f5e, #a855f7, #f97316, #fbbf24)" style="background: linear-gradient(135deg, #fbbf24, #f43f5e)">
+          <span class="preset-name">Amber Rose</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+
+        <button class="btn preset" data-from="#00DBC3" data-to="#3F3A9F" data-halo="conic-gradient(from 0deg, #18001B, #3F3A9F, #0084B8, #00DBC3, #18001B)" style="background: linear-gradient(135deg, #00dbc3, #3f3a9f)">
+          <span class="preset-name">Quiet Borealis</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+        <button class="btn preset" data-from="#008AC3" data-to="#310032" data-halo="conic-gradient(from 0deg, #001C1A, #008AC3, #2F2E9A, #310032, #001C1A)" style="background: linear-gradient(135deg, #008ac3, #310032)">
+          <span class="preset-name">Velvet Borealis</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+        <button class="btn preset" data-from="#E55D77" data-to="#004690" data-halo="conic-gradient(from 0deg, #E55D77, #923AB9, #004690, #E55D77)" style="background: linear-gradient(135deg, #e55d77, #923ab9, #004690)">
+          <span class="preset-name">Electric Wisteria</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+        <button class="btn preset" data-from="#00CBF2" data-to="#EBA02F" data-halo="conic-gradient(from 0deg, #00CBF2, #9F8CFC, #FE74A4, #EBA02F, #00CBF2)" style="background: linear-gradient(135deg, #00cbf2, #9f8cfc, #fe74a4, #eba02f);">
+          <span class="preset-name">Lit Raspberry</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+        <button class="btn preset" data-from="#D6D968" data-to="#5F0070" data-halo="conic-gradient(from 0deg, #D6D968, #D73B07, #9C174A, #5F0070, #D6D968)" style="background: linear-gradient(135deg, #d6d968, #d73b07, #5f0070)">
+          <span class="preset-name">Molten Ember</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+        <button class="btn preset" data-from="#00C4EA" data-to="#4BA3FF" data-halo="conic-gradient(from 0deg, #000D0B, #00C4EA, #4BA3FF, #000D0B)" style="background: linear-gradient(135deg, #00c4ea, #4ba3ff)">
+          <span class="preset-name">Wandering Arctic</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+        <button class="btn preset" data-from="#8F4244" data-to="#001249" data-halo="conic-gradient(from 0deg, #8F4244, #5F2169, #001249, #8F4244)" style="background: linear-gradient(135deg, #8f4244, #5f2169, #001249)">
+          <span class="preset-name">Evening Amethyst</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+        <button class="btn preset" data-from="#23DF99" data-to="#28173C" data-halo="conic-gradient(from 0deg, #23DF99, #006E82, #28173C, #23DF99)" style="background: linear-gradient(135deg, #23df99, #006e82, #28173c)">
+          <span class="preset-name">Cozy Night Ribbon</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+        <button class="btn preset" data-from="#7C3AED" data-to="#10B981" data-halo="conic-gradient(from 0deg, #7C3AED, #EC4899, #3B82F6, #06B6D4, #10B981, #7C3AED)" style="background: linear-gradient(135deg, #7c3aed, #ec4899, #3b82f6, #06b6d4, #10b981);">
+          <span class="preset-name">Aurora Spectrum</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+        <button class="btn preset" data-from="#FFB2E5" data-to="#002F40" data-halo="conic-gradient(from 0deg, #FFB2E5, #7471BA, #002F40, #FFB2E5)" style="background: linear-gradient(135deg, #ffb2e5, #7471ba, #002f40)">
+          <span class="preset-name">Lavender Nebula</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+        <button class="btn preset" data-from="#00DBC3" data-to="#3F3A9F" data-halo="conic-gradient(#00DBC3,#10B981,#3F3A9F,#EC4899,#00DBC3)" style="background: linear-gradient(135deg, #00dbc3, #3f3a9f)">
+          <span class="preset-name">Northern Veil</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+        <button class="btn preset" data-from="#A855F7" data-to="#F472B6" data-halo="conic-gradient(#312E81,#7C3AED,#EC4899,#F59E0B,#06B6D4,#312E81)" style="background: linear-gradient(135deg, #312e81, #a855f7, #f472b6)">
+          <span class="preset-name">Cosmic Nebula</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+        <button class="btn preset" data-from="#06B6D4" data-to="#C084FC" data-halo="conic-gradient(#06B6D4,#3B82F6,#8B5CF6,#EC4899,#10B981,#06B6D4)" style="background: linear-gradient(135deg, #06b6d4, #8b5cf6, #ec4899)">
+          <span class="preset-name">Holographic Prism</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+        <button class="btn preset" data-from="#3B82F6" data-to="#A855F7" data-halo="conic-gradient(#1D4ED8,#3B82F6,#A855F7,#EC4899,#1D4ED8)" style="background: linear-gradient(135deg, #3b82f6, #a855f7)">
+          <span class="preset-name">Electric Ribbons</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+        <button class="btn preset" data-from="#FBBF24" data-to="#F43F5E" data-halo="conic-gradient(#FDE68A,#F59E0B,#F43F5E,#9F1239,#FBBF24)" style="background: linear-gradient(135deg, #fde68a, #f59e0b, #f43f5e)">
+          <span class="preset-name">Solar Flare</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+        <button class="btn preset" data-from="#22D3EE" data-to="#14B8A6" data-halo="conic-gradient(#164E63,#0891B2,#22D3EE,#14B8A6,#164E63)" style="background: linear-gradient(135deg, #164e63, #22d3ee, #14b8a6)">
+          <span class="preset-name">Bioluminescent Abyss</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+        <button class="btn preset" data-from="#F0ABFC" data-to="#6366F1" data-halo="conic-gradient(#6366F1,#A855F7,#F0ABFC,#EC4899,#3B82F6,#6366F1)" style="background: linear-gradient(135deg, #6366f1, #a855f7, #f0abfc)">
+          <span class="preset-name">Plasma Rings</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+        <button class="btn preset" data-from="#34D399" data-to="#06B6D4" data-halo="conic-gradient(#064E3B,#059669,#34D399,#06B6D4,#064E3B)" style="background: linear-gradient(135deg, #064e3b, #059669, #34d399)">
+          <span class="preset-name">Emerald Glass</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+        <button class="btn preset" data-from="#818CF8" data-to="#38BDF8" data-halo="conic-gradient(#312E81,#6366F1,#818CF8,#38BDF8,#7C3AED,#312E81)" style="background: linear-gradient(135deg, #312e81, #818cf8, #38bdf8)">
+          <span class="preset-name">Quantum Facets</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+        <button class="btn preset" data-from="#FDA4AF" data-to="#F59E0B" data-halo="conic-gradient(#7F1D1D,#F43F5E,#FDA4AF,#FDE68A,#F59E0B,#7F1D1D)" style="background: linear-gradient(135deg, #f43f5e, #fda4af, #f59e0b)">
+          <span class="preset-name">Liquid Soundwave</span>
+          <span class="preset-badge" aria-label="Color gradient preview" title="Orb and halo gradient"></span>
+        </button>
+      </div>
+    </div>
+
+    <script src="script.js" defer></script>
+  </body>
+</html>
