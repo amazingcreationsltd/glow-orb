@@ -1,0 +1,234 @@
+const stateButtons = [...document.querySelectorAll('.state-btn')];
+const presetButtons = [...document.querySelectorAll('.preset')];
+const stateBadge = document.querySelector('#stateBadge');
+const meter = document.querySelector('#meter');
+const gainSlider = document.querySelector('#gainSlider');
+const glowSlider = document.querySelector('#glowSlider');
+const pulseSlider = document.querySelector('#pulseSlider');
+const haloNoiseSlider = document.querySelector('#haloNoiseSlider');
+const audioPlayer = document.querySelector('#audioPlayer');
+const fileInput = document.querySelector('#fileInput');
+const micBtn = document.querySelector('#micBtn');
+const orbCanvas = document.querySelector('#orb');
+const orbCtx = orbCanvas.getContext('2d');
+
+const stateMap = {
+  idle: 'idle',
+  speaking: 'speaking',
+  listening: 'listening',
+  thinking: 'thinking',
+};
+
+const updateReadout = (id, value, suffix = '') => {
+  const el = document.querySelector(`#${id}`);
+  if (!el) return;
+  el.textContent = value + suffix;
+};
+
+const setState = (nextState) => {
+  stateButtons.forEach((btn) => {
+    const isActive = btn.dataset.state === nextState;
+    btn.classList.toggle('active', isActive);
+  });
+
+  const label = nextState.charAt(0).toUpperCase() + nextState.slice(1);
+  stateBadge.textContent = `Min: 240px | state: ${nextState}`;
+  stateBadge.style.color = '#34d399';
+
+  if (nextState === 'thinking') {
+    stateBadge.style.color = '#a5b4fc';
+  }
+
+  if (nextState === 'listening') {
+    stateBadge.style.color = '#fbbf24';
+  }
+
+  if (nextState === 'idle') {
+    stateBadge.style.color = '#34d399';
+  }
+};
+
+stateButtons.forEach((button) => {
+  button.addEventListener('click', () => setState(button.dataset.state));
+});
+
+const syncControls = () => {
+  const gain = Number(gainSlider.value);
+  const pulse = Number(pulseSlider.value);
+  const glow = Number(glowSlider.value);
+  const haloNoise = Number(haloNoiseSlider.value);
+
+  meter.style.width = `${(gain / 8) * 100}%`;
+  updateReadout('gainVal', `Gain: ${gain.toFixed(1)}x`);
+  updateReadout('pulseVal', `+${(pulse * 100).toFixed(0)}%`);
+  updateReadout('glowVal', `${(glow * 100).toFixed(0)}%`);
+  updateReadout('haloNoiseVal', `${haloNoise}%`);
+};
+
+[gainSlider, pulseSlider, glowSlider, haloNoiseSlider].forEach((input) => {
+  input.addEventListener('input', syncControls);
+});
+
+presetButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    presetButtons.forEach((preset) => preset.classList.toggle('selected', preset === button));
+
+    const from = button.dataset.from || '#4285F4';
+    const to = button.dataset.to || '#EA4335';
+    const halo = button.dataset.halo || 'conic-gradient(from 0deg, #4285F4, #34A853, #FBBC05, #EA4335, #4285F4)';
+
+    document.documentElement.style.setProperty('--badge-from', from);
+    document.documentElement.style.setProperty('--badge-to', to);
+    const haloOuter = document.querySelector('#haloOuter');
+    const haloInner = document.querySelector('#haloInner');
+    haloOuter.style.background = halo;
+    haloInner.style.background = halo;
+  });
+});
+
+fileInput.addEventListener('change', (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  const url = URL.createObjectURL(file);
+  audioPlayer.src = url;
+  audioPlayer.style.display = 'block';
+  audioPlayer.play();
+  setState('speaking');
+});
+
+micBtn.addEventListener('click', async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioPlayer.srcObject = stream;
+    audioPlayer.style.display = 'block';
+    audioPlayer.play();
+    setState('listening');
+  } catch (error) {
+    console.error('Microphone access failed:', error);
+    setState('idle');
+  }
+});
+
+function renderOrb(time) {
+  const width = orbCanvas.width;
+  const height = orbCanvas.height;
+
+  orbCtx.clearRect(0, 0, width, height);
+
+  const cx = width / 2;
+  const cy = height / 2;
+  const radius = 120 + Math.sin(time * 0.002) * 18;
+  const glow = Number(glowSlider.value);
+  const pulse = Number(pulseSlider.value);
+
+  const radial = orbCtx.createRadialGradient(
+    cx,
+    cy,
+    radius * 0.2,
+    cx,
+    cy,
+    radius * 1.8 + pulse * 150
+  );
+
+  radial.addColorStop(0, `rgba(255,255,255,${0.9 + glow * 0.15})`);
+  radial.addColorStop(0.25, 'rgba(99, 102, 241, 0.8)');
+  radial.addColorStop(0.55, 'rgba(59,130,246,0.6)');
+  radial.addColorStop(1, 'rgba(10, 10, 20, 0)');
+
+  orbCtx.fillStyle = radial;
+  orbCtx.beginPath();
+  orbCtx.arc(cx, cy, radius * 1.9 + pulse * 100, 0, Math.PI * 2);
+  orbCtx.fill();
+
+  orbCtx.beginPath();
+  orbCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+  orbCtx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+  orbCtx.shadowBlur = 30 + glow * 18;
+  orbCtx.shadowColor = 'rgba(103, 80, 255, 0.8)';
+  orbCtx.fill();
+
+  orbCtx.shadowBlur = 0;
+  orbCtx.lineWidth = 3;
+  orbCtx.strokeStyle = 'rgba(255,255,255,0.4)';
+  orbCtx.beginPath();
+  orbCtx.arc(cx, cy, radius * 0.75, 0, Math.PI * 2);
+  orbCtx.stroke();
+
+  const level = Number(gainSlider.value) / 8;
+  const wave = Math.sin(time * 0.008) * 18 * level;
+  orbCtx.beginPath();
+  orbCtx.moveTo(cx - 60, cy + wave);
+  for (let x = -60; x <= 60; x += 6) {
+    const y = cy + wave + Math.sin((x + time * 0.004) * 0.35) * (18 + level * 30);
+    orbCtx.lineTo(cx + x, y);
+  }
+  orbCtx.strokeStyle = 'rgba(255,255,255,0.42)';
+  orbCtx.lineWidth = 2;
+  orbCtx.stroke();
+
+  requestAnimationFrame(renderOrb);
+}
+
+syncControls();
+setState('speaking');
+requestAnimationFrame(renderOrb);
+
+window.addEventListener('resize', () => {
+  const orb = document.querySelector('#orb');
+  if (orb) {
+    orb.setAttribute('width', Math.min(window.innerWidth, 560));
+    orb.setAttribute('height', Math.min(window.innerHeight, 560));
+  }
+});
+
+const particleDensity = document.querySelector('#particleDensity');
+const particleSpeed = document.querySelector('#particleSpeed');
+const particleSpread = document.querySelector('#particleSpread');
+const particleGlow = document.querySelector('#particleGlow');
+
+[particleDensity, particleSpeed, particleSpread, particleGlow].forEach((input) => {
+  input.addEventListener('input', () => {
+    const density = Number(particleDensity.value);
+    const speed = Number(particleSpeed.value);
+    const spread = Number(particleSpread.value);
+    const glow = Number(particleGlow.value);
+
+    document.querySelector('#particleDensityVal').textContent = density;
+    document.querySelector('#particleSpeedVal').textContent = `${speed.toFixed(1)}×`;
+    document.querySelector('#particleSpreadVal').textContent = `${spread}px`;
+    document.querySelector('#particleGlowVal').textContent = `${(glow * 100).toFixed(0)}%`;
+    document.querySelector('#particleStatus').textContent = `${density} particle cap`;
+  });
+});
+
+// Keep the orb stage in tune with the controls.
+const haloOuter = document.querySelector('#haloOuter');
+const haloInner = document.querySelector('#haloInner');
+
+const syncHalo = () => {
+  const glow = Number(glowSlider.value);
+  const noise = Number(haloNoiseSlider.value) / 100;
+  haloOuter.style.opacity = String(0.16 + glow * 0.2);
+  haloInner.style.opacity = String(0.24 + glow * 0.3);
+  haloOuter.style.filter = `blur(${44 + glow * 12}px) saturate(${1.6 + glow})`;
+  haloInner.style.filter = `blur(${18 + glow * 8}px) saturate(${1.9 + glow})`;
+  haloOuter.style.setProperty('--halo-noise-outer', noise);
+  haloInner.style.setProperty('--halo-noise-inner', noise * 0.8);
+};
+
+glowSlider.addEventListener('input', syncHalo);
+haloNoiseSlider.addEventListener('input', syncHalo);
+syncHalo();
+
+const orbStage = document.querySelector('.orb-stage');
+orbStage.addEventListener('pointermove', (event) => {
+  const rect = orbStage.getBoundingClientRect();
+  const x = (event.clientX - rect.left) / rect.width - 0.5;
+  const y = (event.clientY - rect.top) / rect.height - 0.5;
+  const halo = document.querySelector('#haloOuter');
+  halo.style.transform = `translate(${x * 18}px, ${y * 18}px)`;
+  document.querySelector('#haloInner').style.transform = `translate(${x * 8}px, ${y * 8}px)`;
+});
+
+console.log('Glow Orb UI ready.');
